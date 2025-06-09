@@ -1,0 +1,15 @@
+# Arquivos DLL compilados/otimizados em bytes
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Ambientes virtuais
+venv/
+.env/
+.venv/
+
+# Variáveis ​​de ambiente
+*.env
+
+# VS Code
+.vscode/
