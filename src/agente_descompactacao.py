@@ -3,13 +3,12 @@ import zipfile
 import pandas as pd
 
 class AgenteDescompactacao:
-    def __init__(self, zip_path, output_folder="../data"):
+    def __init__(self, zip_path, output_folder="../data"): #Função especial que inicializa o agente
         self.zip_path = zip_path
         self.output_folder = output_folder
         self.csv_files = []
 
-    def descompactar_zip(self):
-        """Descompacta o arquivo ZIP e lista os arquivos CSV extraídos."""
+    def descompactar_zip(self): #Descompacta o arquivo ZIP e lista os arquivos CSV extraídos
         if not os.path.exists(self.output_folder):
             os.makedirs(self.output_folder)
 
@@ -21,8 +20,10 @@ class AgenteDescompactacao:
 
         print(f"Arquivos extraídos: {self.csv_files}")
 
-    def carregar_csv(self):
-        """Carrega os arquivos CSV em dataframes do pandas."""
+    def carregar_csv(self): #Carrega os arquivos CSV em dataframes do pandas
+        if not self.csv_files:
+            print("Nenhum arquivo CSV encontrado para carregar.")
+            return {}
         dataframes = {}
         for file in self.csv_files:
             file_path = os.path.join(self.output_folder, file)
