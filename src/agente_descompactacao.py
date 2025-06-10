@@ -8,15 +8,14 @@ class AgenteDescompactacao:
         self.output_folder = output_folder
         self.csv_files = []
 
-    def descompactar_zip(self): #Descompacta o arquivo ZIP e lista os arquivos CSV extraídos
+    def descompactar_zip(self): #Função que descompacta o arquivo ZIP e lista os arquivos CSV extraídos
         if not os.path.exists(self.output_folder):
             os.makedirs(self.output_folder)
 
-        with zipfile.ZipFile(self.zip_path, 'r') as zip_ref:
-            zip_ref.extractall(self.output_folder)
+        with zipfile.ZipFile(self.zip_path, 'r') as zip_temp: #Abra o arquivo ZIP em modo leitura e chama ele de zip_temp
+            zip_temp.extractall(self.output_folder) #Extrai o arquivo zip_temp e salva em self.output_folder
 
-        # Lista os arquivos CSV extraídos
-        self.csv_files = [f for f in os.listdir(self.output_folder) if f.endswith(".csv")]
+        self.csv_files = [f for f in os.listdir(self.output_folder) if f.endswith(".csv")] # Cria uma lista com os nomes dos arquivos .csv que estão na pasta self.output_folders
 
         print(f"Arquivos extraídos: {self.csv_files}")
 
