@@ -1,7 +1,8 @@
 import re
 import nltk
 from nltk.stem import WordNetLemmatizer
-from nltk.tokenize import word_tokenize
+from nltk.tokenize import TreebankWordTokenizer
+
 
 # Inicialização do NLTK
 nltk.download('punkt', quiet=True)
@@ -16,10 +17,12 @@ class AgenteInterpretador:
             "nota fiscal": ["nota", "nf", "documento"]
         }
         self.lemmatizer = WordNetLemmatizer()
+        self.tokenizer = TreebankWordTokenizer()
+
 
     def interpretar_pergunta(self, pergunta):
         pergunta = pergunta.lower()
-        tokens = word_tokenize(pergunta)
+        tokens = self.tokenizer.tokenize(pergunta)
         lemas = [self.lemmatizer.lemmatize(token) for token in tokens]
 
         resultado = {"campo": None, "filtro": None}
