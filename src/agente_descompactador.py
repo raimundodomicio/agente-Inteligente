@@ -2,7 +2,7 @@ import os
 import zipfile
 import pandas as pd
 
-class AgenteDescompactacao:
+class AgenteDescompactador:
     def __init__(self, caminho_zip, pasta_destino="../data"): #Função especial que inicializa o agente
         self.caminho_zip = caminho_zip
         self.pasta_destino = pasta_destino
@@ -35,7 +35,7 @@ class AgenteDescompactacao:
 
 if __name__ == "__main__":
     caminho_zip = "202401_NFs.zip"  # Caminho do ZIP no diretório raiz
-    agente = AgenteDescompactacao(caminho_zip)
+    agente = AgenteDescompactador.py(caminho_zip)
     agente.descompactar_zip()
     dataframes = agente.carregar_csv()
     for nome, df in dataframes.items():

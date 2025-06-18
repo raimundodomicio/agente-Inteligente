@@ -1,10 +1,10 @@
-from src.agente_descompactacao import AgenteDescompactacao
+from src.agente_descompactador import AgenteDescompactador
 from src.agente_indexador import AgenteIndexador
 from src.agente_interpretador import AgenteInterpretador
 
 class AgenteExecutor: #Inicializa os agentes
     def __init__(self):
-        self.descompactador = AgenteDescompactacao(caminho_zip="202401_NFs.zip", pasta_destino="../data")
+        self.descompactador = AgenteDescompactador(caminho_zip="202401_NFs.zip", pasta_destino="../data")
         self.indexador = AgenteIndexador()
         self.interpretador = AgenteInterpretador()
 
