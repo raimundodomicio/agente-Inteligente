@@ -1,3 +1,5 @@
+import pandas as pd
+
 from agente1_descompactador import AgenteDescompactador
 from agente2_indexador import AgenteIndexador
 from agente3_interpretador import AgenteInterpretador
@@ -61,10 +63,11 @@ if __name__ == "__main__":
     agente = AgenteOrquestrador()
     perguntas = [
         "Quem foi o comprador na nota fiscal 5183?",
+
         "Qual o total da nota fiscal 369180?",
         "Quais os produtos na nota fiscal 17055?"
     ]
 
     for pergunta in perguntas:
         resposta = agente.executar_pergunta(pergunta)
-        print(f"\n🧾 Pergunta: {pergunta}\n📎 Resposta: {resposta}")
+        print(f"\nPergunta: {pergunta}\nResposta: {resposta}")
