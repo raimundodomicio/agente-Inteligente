@@ -1,6 +1,6 @@
-from src.agente_descompactador import AgenteDescompactador
-from src.agente_indexador import AgenteIndexador
-from src.agente_interpretador import AgenteInterpretador
+from src.agente1_descompactador import AgenteDescompactador
+from src.agente2_indexador import AgenteIndexador
+from src.agente3_interpretador import AgenteInterpretador
 
 class AgenteExecutor: #Inicializa os agentes
     def __init__(self):
