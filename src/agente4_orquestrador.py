@@ -3,51 +3,60 @@ from agente2_indexador import AgenteIndexador
 from agente3_interpretador import AgenteInterpretador
 
 class AgenteOrquestrador:
-    def __init__(self, caminho_zip="202401_NFs.zip"): #Inicializa os agentes e prepara os dados
+    def __init__(self, caminho_zip="202401_NFs.zip"): #Inicializa os agentes e carrega os dados
         self.descompactador = AgenteDescompactador(caminho_zip)
         self.indexador = AgenteIndexador()
         self.interpretador = AgenteInterpretador()
 
-        # Etapa opcional: descompactar os dados (somente se necessário)
         self.descompactador.descompactar_zip()
-
-        # Carrega e indexa os dados (se ainda não carregados)
         self.indexador.carregar_dados()
 
-    def executar_pergunta(self, pergunta): #Executa o ciclo de compreensão e resposta
+    def executar_pergunta(self, pergunta):#Executa o ciclo completo: interpretar -> buscar -> responder
         consulta = self.interpretador.interpretar_pergunta(pergunta)
 
         if not consulta:
-            return "Não entendi sua pergunta. Pode reformular a pergunta?"
+            return "Ops! Não entendi a pergunta. Pode reformular?"
 
-        campo, filtro = consulta["campo"], consulta["filtro"]
-        resultados = self.indexador.buscar(filtro)
+        campo = consulta["campo"]
+        filtro = consulta["filtro"]
 
-        if not resultados:
+        registros = self.indexador.buscar_por_numero_nf(filtro)
+
+        if not registros:
             return f"Nenhum dado encontrado para a nota fiscal {filtro}."
 
-        return self.gerar_resposta(campo, filtro, resultados)
+        return self.gerar_resposta(campo, filtro, registros)
 
-    def gerar_resposta(self, campo, filtro, registros): #Gera uma resposta em linguagem natural baseada nos dados
+    def gerar_resposta(self, campo, filtro, registros):#Gera resposta em linguagem natural baseada no campo solicitado
+        # Cliente (destinatário)
         if campo == "cliente":
-            cliente = registros[0].get("cliente", "Cliente não identificado")
+            cliente = registros[0].get("NOME DESTINATÁRIO", "Cliente não identificado")
             return f"O cliente da nota fiscal {filtro} é: {cliente}."
 
-        elif campo == "produto":
-            produtos = [r.get("descricao_produto", "produto não identificado") for r in registros]
-            lista = "\n- " + "\n- ".join(produtos)
-            return f"Itens vendidos na nota fiscal {filtro}:{lista}"
-
+        # Valor total da nota
         elif campo == "valor":
-            valor = registros[0].get("valor_total") or registros[0].get("valor", None)
+            valor = registros[0].get("VALOR NOTA FISCAL") or registros[0].get("VALOR TOTAL")
             if valor:
-                return f"O valor total da nota fiscal {filtro} é R$ {valor:.2f}."
-            return f"Valor da nota {filtro} não localizado."
+                return f"O valor total da nota fiscal {filtro} é R$ {float(valor):.2f}."
+            return f"Valor da nota fiscal {filtro} não localizado nos registros."
 
+        # Produtos vendidos
+        elif campo == "produto":
+            produtos = [
+                r.get("DESCRIÇÃO DO PRODUTO/SERVIÇO")
+                for r in registros
+                if pd.notnull(r.get("DESCRIÇÃO DO PRODUTO/SERVIÇO"))
+            ]
+            if produtos:
+                lista = "\n- " + "\n- ".join(set(produtos))
+                return f"Itens da nota fiscal {filtro}:{lista}"
+            return f"Não foram encontrados itens na nota fiscal {filtro}."
+
+        # Caso o campo não esteja mapeado
         else:
             return f"Ainda não sei como responder perguntas sobre '{campo}'."
 
-# Teste local
+# Teste local do Agente 4
 if __name__ == "__main__":
     agente = AgenteOrquestrador()
     perguntas = [
@@ -58,4 +67,4 @@ if __name__ == "__main__":
 
     for pergunta in perguntas:
         resposta = agente.executar_pergunta(pergunta)
-        print(f"\nPergunta: {pergunta}\nResposta: {resposta}")
+        print(f"\n🧾 Pergunta: {pergunta}\n📎 Resposta: {resposta}")
