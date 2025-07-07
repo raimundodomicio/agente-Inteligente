@@ -1,100 +1,103 @@
+from transformers import pipeline
+import json
 import re
-import nltk
-import spacy
-import pandas as pd
-from nltk.stem import WordNetLemmatizer
-from nltk.tokenize import TreebankWordTokenizer
-from sentence_transformers import SentenceTransformer
-from scipy.spatial.distance import cosine
-
-# Inicialização dos recursos NLP
-nltk.download('punkt', quiet=True)
-nltk.download('wordnet', quiet=True)
-spacy_model = spacy.load("pt_core_news_sm")
-
-# Modelo de embeddings
-embedding_model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
 
 class AgenteInterpretador:
-    def __init__(self):
-        self.categorias = {
-            "produto": ["produto", "item", "mercadoria", "itens", "produtos", "bens"],
-            "valor": ["valor", "preço", "total", "custo", "gasto"],
-            "cliente": ["cliente", "comprador", "destinatário", "consumidor", "empresa"],
-            #"nota fiscal": ["nota", "nf", "documento", "registro", "nota fiscal", "nota fiscal eletrônica"],
-        }
-        self.lemmatizer = WordNetLemmatizer()
-        self.tokenizer = TreebankWordTokenizer()
+    def __init__(self, model="google/flan-t5-large"):
+        """
+        Inicializa o interpretador com um modelo de linguagem local da Hugging Face.
+        """
+        print("Inicializando o modelo de linguagem local. Isso pode levar alguns minutos...")
+        self.nlp_pipeline = pipeline("text2text-generation", model=model)
+        print("Modelo carregado com sucesso!")
 
     def interpretar_pergunta(self, pergunta):
-        pergunta = pergunta.lower()
-        tokens = self.tokenizer.tokenize(pergunta)
-        lemas = [self.lemmatizer.lemmatize(token) for token in tokens]
-        frase_embedding = embedding_model.encode(" ".join(lemas))
+        """
+        Usa o modelo local para interpretar a pergunta e extrair informações estruturadas.
+        """
+        pergunta_lower = pergunta.lower().strip()
 
-        resultado = {
-            "tipo": None,
-            "campo": None,
-            "operacao": None,
-            "filtro": None
-        }
+        # 1. Verificar saudações
+        saudacoes = ["olá", "oi", "bom dia", "boa tarde", "boa noite", "e aí", "tudo bem"]
+        if any(s in pergunta_lower for s in saudacoes):
+            return {"tipo": "saudacao", "campo": None, "filtro": None}
 
-        # Detectar número de nota (se houver)
-        match = re.search(r'\b\d{3,}\b', pergunta)
-        if match:
-            resultado["filtro"] = match.group()
-            resultado["tipo"] = "consulta_por_nf"
-        else:
-            resultado["tipo"] = "consulta_global"
+        # 2. Prompt para o LLM - Pedindo um formato simples de chave:valor
+        prompt = f'''
+        Analise a pergunta abaixo e extraia as seguintes informações, uma por linha, no formato "chave: valor":
+        - tipo: "consulta_por_nf" se a pergunta contiver um número de nota fiscal (ex: 1234, 56789), caso contrário "consulta_global".
+        - campo: O principal campo de interesse na pergunta (ex: "cliente", "valor", "produto"). Se não for claro, use "desconhecido".
+        - filtro: O número da nota fiscal, se presente, caso contrário null.
 
-        # Mapeia categoria mais próxima semanticamente
-        melhor_categoria = None
-        menor_distancia = float("inf")
-        for categoria, palavras_chave in self.categorias.items():
-            for palavra in palavras_chave:
-                palavra_embedding = embedding_model.encode(palavra)
-                distancia = cosine(frase_embedding, palavra_embedding)
-                if distancia < menor_distancia:
-                    menor_distancia = distancia
-                    melhor_categoria = categoria
+        Exemplos de saída:
+        - Para "Qual o total da nota fiscal 1234?":
+          tipo: consulta_por_nf
+          campo: valor
+          filtro: 1234
+        - Para "Quem foi o comprador na NF 56789?":
+          tipo: consulta_por_nf
+          campo: cliente
+          filtro: 56789
+        - Para "Quais os produtos mais vendidos?":
+          tipo: consulta_global
+          campo: produto
+          filtro: null
+        - Para "Me diga algo sobre as notas fiscais":
+          tipo: consulta_global
+          campo: desconhecido
+          filtro: null
 
-        resultado["campo"] = melhor_categoria
+        Pergunta: {pergunta}
 
-        # Detectar operações agregadas ou estatísticas
-        if resultado["tipo"] == "consulta_global":
-            if "maior" in pergunta or "mais alto" in pergunta:
-                resultado["operacao"] = "max"
-            elif "menor" in pergunta or "mais baixo" in pergunta:
-                resultado["operacao"] = "min"
-            elif "média" in pergunta and "cliente" in pergunta:
-                resultado["operacao"] = "media_por_cliente"
-            elif "média" in pergunta or "médio" in pergunta:
-                resultado["operacao"] = "media"
-            elif "mais vendido" in pergunta or "mais vendidos" in pergunta or "mais comprados" in pergunta:
-                resultado["operacao"] = "mais_frequente"
-            elif "mais aparece" in pergunta or "repetido" in pergunta or "comprador mais frequente" in pergunta:
-                resultado["operacao"] = "mais_frequente"
+        Saída:
+        '''
 
-            # Captura nome de cliente (tentativa simples)
-            if resultado["operacao"] == "media_por_cliente":
-                doc = spacy_model(pergunta)
-                nomes = [ent.text for ent in doc.ents if ent.label_ == "PER"]
-                if nomes:
-                    resultado["filtro"] = nomes[0]
+        try:
+            # Aumentar max_length para dar mais espaço ao modelo
+            resultado = self.nlp_pipeline(prompt, max_length=200)
+            raw_output = resultado[0]['generated_text']
+            
+            print(f"DEBUG: Saída bruta do modelo: {raw_output}") # Para depuração
 
-        return resultado if resultado["campo"] else None
+            # Parsear a saída do modelo manualmente
+            parsed_data = {}
+            lines = raw_output.strip().split('\n')
+            for line in lines:
+                if ':' in line:
+                    key, value = line.split(':', 1)
+                    key = key.strip()
+                    value = value.strip()
+                    
+                    # Converter 'null' string para None Python
+                    if value.lower() == 'null':
+                        value = None
+                    
+                    parsed_data[key] = value
+            
+            # Validar e retornar o dicionário
+            if "tipo" in parsed_data and "campo" in parsed_data:
+                return parsed_data
+            else:
+                raise ValueError("Saída do modelo incompleta ou malformada.")
 
+        except Exception as e:
+            print(f"Erro ao processar a pergunta com o modelo local: {e}")
+            # Retorna uma estrutura de erro específica
+            return {"tipo": "erro_interpretacao", "campo": None, "filtro": None}
 
-# Teste do Agente
-if __name__ == "__main__":
+# Teste local
+if __name__ == '__main__':
     agente = AgenteInterpretador()
     perguntas = [
         "Qual o total da nota fiscal 2525?",
-        "Quais os itens vendidos na nota fiscal 3482?",
-        "Quem foi o comprador na NF 1975?"
+        "Quem foi o comprador na NF 1975?",
+        "Qual o produto mais caro?",
+        "Boa noite!",
+        "Me diga algo sobre as notas fiscais",
+        "Isso é um teste"
     ]
 
-    for pergunta in perguntas:
-        consulta_interpretada = agente.interpretar_pergunta(pergunta)
-        print(f"Pergunta: {pergunta}")
-        print(f"Consulta gerada: {consulta_interpretada}\n")
+    for p in perguntas:
+        interpretacao = agente.interpretador_pergunta(p)
+        print(f"Pergunta: {p}")
+        print(f"Interpretação: {interpretacao}\n")

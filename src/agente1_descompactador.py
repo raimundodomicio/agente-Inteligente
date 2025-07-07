@@ -31,13 +31,3 @@ class AgenteDescompactador:
         print(f"{len(self.arquivo_csv)} arquivos CSV carregados com sucesso.")
         return dataframes
 
-# Exemplo para teste de vericação dos arquivos .csv
-
-if __name__ == "__main__":
-    caminho_zip = "202401_NFs.zip"  # Caminho do ZIP no diretório raiz
-    agente = AgenteDescompactador.py(caminho_zip)
-    agente.descompactar_zip()
-    dataframes = agente.carregar_csv()
-    for nome, df in dataframes.items():
-        print(f"DataFrame para {nome}:")
-        print(df.head())  # Exibe as primeiras linhas de cada DataFrame

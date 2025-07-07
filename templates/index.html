@@ -1,0 +1,252 @@
+
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Assistente de Análise de NF</title>
+    <style>
+        :root {
+            --bg-color: #f4f4f9;
+            --container-bg: white;
+            --header-bg: #4a90e2;
+            --header-color: white;
+            --chat-border: #ddd;
+            --user-msg-bg: #dcf8c6;
+            --bot-msg-bg: #f1f1f1;
+            --input-border: #ccc;
+            --send-btn-bg: #4a90e2;
+            --send-btn-color: white;
+            --text-color: #333;
+            --button-bg: #6c757d;
+            --button-color: white;
+        }
+
+        [data-theme="dark"] {
+            --bg-color: #2c2c2c;
+            --container-bg: #3a3a3a;
+            --header-bg: #1a1a1a;
+            --header-color: #f1f1f1;
+            --chat-border: #555;
+            --user-msg-bg: #0056b3;
+            --bot-msg-bg: #555;
+            --input-border: #666;
+            --send-btn-bg: #007bff;
+            --send-btn-color: white;
+            --text-color: #f1f1f1;
+            --button-bg: #495057;
+            --button-color: white;
+        }
+
+        body { 
+            font-family: sans-serif; 
+            background-color: var(--bg-color); 
+            margin: 0; 
+            padding: 0; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            height: 100vh; 
+            color: var(--text-color);
+            transition: background-color 0.3s, color 0.3s;
+        }
+        #chat-container { 
+            width: 80%; 
+            max-width: 800px; 
+            background-color: var(--container-bg); 
+            box-shadow: 0 0 15px rgba(0,0,0,0.1); 
+            border-radius: 10px; 
+            display: flex; 
+            flex-direction: column; 
+            height: 90vh; 
+            transition: background-color 0.3s, box-shadow 0.3s;
+        }
+        #chat-header { 
+            background-color: var(--header-bg); 
+            color: var(--header-color); 
+            padding: 15px; 
+            text-align: center; 
+            border-top-left-radius: 10px; 
+            border-top-right-radius: 10px; 
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        #chat-header h2 {
+            margin: 0;
+            flex-grow: 1;
+        }
+        #chat-header button {
+            background-color: var(--button-bg);
+            color: var(--button-color);
+            border: none;
+            padding: 8px 12px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-left: 10px;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        #chat-box { 
+            flex-grow: 1; 
+            padding: 20px; 
+            overflow-y: auto; 
+            border-bottom: 1px solid var(--chat-border); 
+            transition: border-color 0.3s;
+        }
+        .message { margin-bottom: 15px; }
+        .user-message { text-align: right; }
+        .bot-message { text-align: left; }
+        .message p { 
+            display: inline-block; 
+            padding: 10px 15px; 
+            border-radius: 15px; 
+            max-width: 70%; 
+            word-wrap: break-word;
+        }
+        .user-message p { background-color: var(--user-msg-bg); color: var(--text-color); }
+        .bot-message p { background-color: var(--bot-msg-bg); color: var(--text-color); white-space: pre-wrap; }
+        #input-container { display: flex; padding: 15px; }
+        #user-input { 
+            flex-grow: 1; 
+            border: 1px solid var(--input-border); 
+            border-radius: 20px; 
+            padding: 10px 15px; 
+            font-size: 16px; 
+            background-color: var(--container-bg);
+            color: var(--text-color);
+            transition: border-color 0.3s, background-color 0.3s, color 0.3s;
+        }
+        #send-button { 
+            background-color: var(--send-btn-bg); 
+            color: var(--send-btn-color); 
+            border: none; 
+            border-radius: 50%; 
+            width: 50px; 
+            height: 50px; 
+            margin-left: 10px; 
+            cursor: pointer; 
+            font-size: 20px; 
+            transition: background-color 0.3s, color 0.3s;
+        }
+        .loader { text-align: center; padding: 15px; display: none; color: var(--text-color); }
+    </style>
+</head>
+<body data-theme="light">
+    <div id="chat-container">
+        <div id="chat-header">
+            <h2>Assistente Inteligente de Notas Fiscais</h2>
+            <div>
+                <button id="theme-toggle">☀️</button>
+                <button id="clear-chat">Limpar Conversa</button>
+            </div>
+        </div>
+        <div id="chat-box">
+            <div class="message bot-message">
+                <p>Olá! Eu sou seu assistente para análise de notas fiscais. Como posso ajudar hoje?</p>
+            </div>
+        </div>
+        <div class="loader" id="loader">Carregando...</div>
+        <div id="input-container">
+            <input type="text" id="user-input" placeholder="Digite sua pergunta aqui...">
+            <button id="send-button">➤</button>
+        </div>
+    </div>
+
+    <script>
+        const chatBox = document.getElementById('chat-box');
+        const userInput = document.getElementById('user-input');
+        const sendButton = document.getElementById('send-button');
+        const loader = document.getElementById('loader');
+        const themeToggle = document.getElementById('theme-toggle');
+        const clearChatButton = document.getElementById('clear-chat');
+        const body = document.body;
+
+        // Load theme preference
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        body.setAttribute('data-theme', savedTheme);
+        themeToggle.textContent = savedTheme === 'dark' ? '🌙' : '☀️';
+
+        const sendMessage = async () => {
+            const question = userInput.value.trim();
+            if (!question) return;
+
+            appendMessage(question, 'user');
+            userInput.value = '';
+            loader.style.display = 'block';
+
+            try {
+                const response = await fetch('/ask', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ pergunta: question })
+                });
+
+                const data = await response.json();
+                appendMessage(data.resposta, 'bot');
+
+            } catch (error) {
+                console.error("Erro ao buscar resposta:", error);
+                appendMessage("Desculpe, ocorreu um erro ao conectar ao servidor.", 'bot');
+            } finally {
+                loader.style.display = 'none';
+                chatBox.scrollTop = chatBox.scrollHeight;
+            }
+        };
+
+        const appendMessage = (text, sender) => {
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add('message', `${sender}-message`);
+            const p = document.createElement('p');
+            p.textContent = text;
+            messageDiv.appendChild(p);
+            chatBox.appendChild(messageDiv);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        };
+
+        const toggleTheme = () => {
+            const currentTheme = body.getAttribute('data-theme');
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            body.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            themeToggle.textContent = newTheme === 'dark' ? '🌙' : '☀️';
+        };
+
+        const clearConversation = async () => {
+            // Clear messages from UI
+            chatBox.innerHTML = `
+                <div class="message bot-message">
+                    <p>Olá! Eu sou seu assistente para análise de notas fiscais. Como posso ajudar hoje?</p>
+                </div>
+            `;
+            
+            // Send request to backend to clear agent context
+            try {
+                const response = await fetch('/clear_context', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                const data = await response.json();
+                if (data.status === 'success') {
+                    appendMessage("Contexto da conversa limpo com sucesso!", 'bot');
+                } else {
+                    appendMessage("Erro ao limpar o contexto no servidor.", 'bot');
+                }
+            } catch (error) {
+                console.error("Erro ao limpar contexto:", error);
+                appendMessage("Erro de rede ao tentar limpar o contexto.", 'bot');
+            }
+            chatBox.scrollTop = chatBox.scrollHeight;
+        };
+
+        sendButton.addEventListener('click', sendMessage);
+        userInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+        themeToggle.addEventListener('click', toggleTheme);
+        clearChatButton.addEventListener('click', clearConversation);
+    </script>
+</body>
+</html>
